@@ -77,7 +77,6 @@ def train(args):
           start_time = time.time()
           encoder_inputs, decoder_inputs, target_weights = model.get_batch(
               train_set, bucket_id)
-          pdb.set_trace()
           # print("[shape]", np.shape(encoder_inputs), np.shape(decoder_inputs), np.shape(target_weights))
           if args.reinforce_learn:
             _, step_loss, _ = model.step_rf(args, sess, encoder_inputs, decoder_inputs,

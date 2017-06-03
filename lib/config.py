@@ -11,6 +11,8 @@ def params_setup(cmdline=None):
 
   # training params
   parser.add_argument('--learning_rate', type=float, default=0.5, help='Learning rate.')
+  parser.add_argument('--pretrain_embeddings', type=bool, default=True, help='Learning rate.')
+
   parser.add_argument('--learning_rate_decay_factor', type=float, default=0.99, help='Learning rate decays by this much.')
   parser.add_argument('--max_gradient_norm', type=float, default=5.0, help='Clip gradients to this norm.')
   parser.add_argument('--batch_size', type=int, default=64, help='Batch size to use during training.')

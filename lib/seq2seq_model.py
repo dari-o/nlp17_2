@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
 from lib import data_utils as data_utils
+from lib import Constants
 from lib import seq2seq as tf_seq2seq
 
 class Seq2SeqModel(object):
@@ -56,6 +57,7 @@ class Seq2SeqModel(object):
                learning_rate,
                learning_rate_decay_factor,
                use_lstm=False,
+               pretrain_embeddings= False,
                num_samples=512,
                forward_only=False,
                scope_name='seq2seq',
@@ -150,7 +152,8 @@ class Seq2SeqModel(object):
             embedding_size=size,
             output_projection=output_projection,
             feed_previous=feed_previous, #do_decode,
-            dtype=dtype)
+            dtype=dtype,
+            pretrained=pretrain_embeddings)
 
       # Feeds for inputs.
       self.encoder_inputs = []
