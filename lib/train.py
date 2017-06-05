@@ -66,7 +66,14 @@ def train(args):
         vocab_path = os.path.join(args.data_dir, "vocab%d.in" % args.vocab_size)
         vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path)
 
-        while True:
+        epochSize = train_total_size / args.batch_size
+        epochSize = 1 if epochSize < 1 else epochSize
+        nrStepsToTake = args.epochs * epochSize
+        nrStepsToTake = 1 if nrStepsToTake < 1 else nrStepsToTake
+
+        print("Training %d epochs, on training data of size %d. Batch size is %d" % (args.epochs, train_total_size, args.batch_size))
+
+        while current_step < nrStepsToTake:
           # Choose a bucket according to data distribution. We pick a random number
           # in [0, 1] and use the corresponding interval in train_buckets_scale.
           random_number_01 = np.random.random_sample()
@@ -92,6 +99,8 @@ def train(args):
           # Once in a while, we save checkpoint, print statistics, and run evals.
           if (current_step % args.steps_per_checkpoint == 0) and (not args.reinforce_learn):
             # Print statistics for the previous epoch.
+            print("Trained on "+str(current_step)+" of "+str(nrStepsToTake)+" batches.")
+
             perplexity = math.exp(loss) if loss < 300 else float('inf')
             print ("global step %d learning rate %.4f step-time %.2f perplexity %.2f @ %s" %
                    (model.global_step.eval(), model.learning_rate.eval(), step_time, perplexity, datetime.now()))
