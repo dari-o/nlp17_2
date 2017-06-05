@@ -58,6 +58,7 @@ from __future__ import print_function
 
 import copy
 import contextlib
+import math
 import pdb
 from lib.load_embeddings import load_embedding
 
@@ -71,6 +72,10 @@ from tensorflow.python.ops.rnn_cell_impl import _RNNCell as RNNCell
 
 from tensorflow.contrib.rnn.python.ops import core_rnn_cell_impl
 from tensorflow.python.framework import dtypes
+from tensorflow.python.ops import variable_scope as vs
+from tensorflow.python.ops import init_ops
+
+
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import control_flow_ops
@@ -313,9 +318,9 @@ def embedding_rnn_seq2seq(session, encoder_inputs,
                           embedding_size,
                           output_projection=None,
                           feed_previous=False,
+                          pretrained=False,
                           dtype=None,
-                          scope=None,
-                          pretrained=False):
+                          scope=None):
   """Embedding RNN sequence-to-sequence model.
 
   This model first embeds encoder_inputs by a newly created embedding (of shape
@@ -369,7 +374,7 @@ def embedding_rnn_seq2seq(session, encoder_inputs,
           encoder_cell,
           embedding_classes=num_encoder_symbols,
           embedding_size=embedding_size)
-     
+    
     else:
       encoder_cell = PretrainedEmbeddingWrapper(
         session,
@@ -803,7 +808,7 @@ def embedding_attention_decoder(decoder_inputs,
         initial_state_attention=initial_state_attention)
 
 
-def embedding_attention_seq2seq(encoder_inputs,
+def embedding_attention_seq2seq(session, encoder_inputs,
                                 decoder_inputs,
                                 cell,
                                 encoder_cell,
@@ -814,6 +819,7 @@ def embedding_attention_seq2seq(encoder_inputs,
                                 output_projection=None,
                                 feed_previous=False,
                                 dtype=None,
+                                pretrained=False,
                                 scope=None,
                                 initial_state_attention=False):
   """Embedding sequence-to-sequence model with attention.
@@ -860,15 +866,24 @@ def embedding_attention_seq2seq(encoder_inputs,
       state: The state of each decoder cell at the final time-step.
         It is a 2D Tensor of shape [batch_size x cell.state_size].
   """
+  pdb.set_trace()
   with variable_scope.variable_scope(
       scope or "embedding_attention_seq2seq", dtype=dtype) as scope:
     dtype = scope.dtype
     # Encoder.
     #encoder_cell = copy.deepcopy(cell)
-    encoder_cell = core_rnn_cell.EmbeddingWrapper(
+    if (not pretrained):
+      encoder_cell = core_rnn_cell.EmbeddingWrapper(
+          encoder_cell,
+          embedding_classes=num_encoder_symbols,
+          embedding_size=embedding_size)
+    
+    else:
+      encoder_cell = PretrainedEmbeddingWrapper(
+        session,
         encoder_cell,
-        embedding_classes=num_encoder_symbols,
-        embedding_size=embedding_size)
+          embedding_classes=num_encoder_symbols,
+          embedding_size=embedding_size)
     encoder_outputs, encoder_state = core_rnn.static_rnn(
         encoder_cell, encoder_inputs, dtype=dtype)
 
@@ -1253,7 +1268,7 @@ class PretrainedEmbeddingWrapper(RNNCell):
   feed into your RNN.
   """
 
-  def __init__(self, cell, sess, embedding_classes, embedding_size, initializer=None,
+  def __init__(self, sess, cell, embedding_classes, embedding_size, initializer=None,
                reuse=None):
     """Create a cell with an added input embedding.
 

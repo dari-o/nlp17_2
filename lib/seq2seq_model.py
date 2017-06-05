@@ -18,7 +18,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
+import pdb
 import random
 from math import log
 import numpy as np
@@ -57,9 +57,10 @@ class Seq2SeqModel(object):
                learning_rate,
                learning_rate_decay_factor,
                use_lstm=False,
-               pretrain_embeddings= False,
                num_samples=512,
                forward_only=False,
+               pretrain_embeddings=False,
+               use_attention=False,
                scope_name='seq2seq',
                dtype=tf.float32):
     """Create the model.
@@ -98,7 +99,8 @@ class Seq2SeqModel(object):
           self.learning_rate * learning_rate_decay_factor)
       self.global_step = tf.Variable(0, trainable=False)
       self.dummy_dialogs = [] # [TODO] load dummy sentences 
-
+      self.pretrain_embeddings = pretrain_embeddings
+      self.use_attention = use_attention
       # If we use sampled softmax, we need an output projection.
       output_projection = None
       softmax_loss_function = None
@@ -141,19 +143,34 @@ class Seq2SeqModel(object):
 
       # The seq2seq function: we use embedding for the input and attention.
       def seq2seq_f(encoder_inputs, decoder_inputs, feed_previous):
-        return tf_seq2seq.embedding_rnn_seq2seq(
-            session,
-            encoder_inputs, 
-            decoder_inputs, 
-            cell,
-            encoder_cell,
-            num_encoder_symbols=source_vocab_size,
-            num_decoder_symbols=target_vocab_size,
-            embedding_size=size,
-            output_projection=output_projection,
-            feed_previous=feed_previous, #do_decode,
-            dtype=dtype,
-            pretrained=pretrain_embeddings)
+        if(self.use_attention):
+          return tf_seq2seq.embedding_attention_seq2seq(
+              session,
+              encoder_inputs, 
+              decoder_inputs, 
+              cell,
+              encoder_cell,
+              num_encoder_symbols=source_vocab_size,
+              num_decoder_symbols=target_vocab_size,
+              embedding_size=size,
+              output_projection=output_projection,
+              feed_previous=feed_previous, #do_decode,
+              dtype=dtype,
+              pretrained=self.pretrain_embeddings)
+        else:
+          return tf_seq2seq.embedding_rnn_seq2seq(
+              session,
+              encoder_inputs, 
+              decoder_inputs, 
+              cell,
+              encoder_cell,
+              num_encoder_symbols=source_vocab_size,
+              num_decoder_symbols=target_vocab_size,
+              embedding_size=size,
+              output_projection=output_projection,
+              feed_previous=feed_previous, #do_decode,
+              dtype=dtype,
+              pretrained=self.pretrain_embeddings)
 
       # Feeds for inputs.
       self.encoder_inputs = []

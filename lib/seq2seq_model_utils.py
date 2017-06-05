@@ -27,6 +27,8 @@ def create_model(session, args, forward_only=True):
       batch_size=args.batch_size,
       learning_rate=args.learning_rate,
       learning_rate_decay_factor=args.learning_rate_decay_factor,
+      pretrain_embeddings = args.pretrain_embeddings,
+      use_attention = args.use_attention,
       forward_only=forward_only,
   )
 
