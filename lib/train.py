@@ -32,7 +32,7 @@ def setup_workpath(workspace):
 def train(args):
     print("[%s] Preparing dialog data in %s" % (args.model_name, args.data_dir))
     setup_workpath(workspace=args.workspace)
-    train_data, dev_data, _ = data_utils.prepare_dialog_data(args.data_dir, args.vocab_size)
+    train_data, dev_data, _ = data_utils.prepare_dialog_data(args.data_dir, args.vocab_size, args.dict_path)
 
     if args.reinforce_learn:
       args.batch_size = 1  # We decode one sentence at a time.
@@ -64,7 +64,7 @@ def train(args):
 
         # Load vocabularies.
         vocab_path = os.path.join(args.data_dir, "vocab%d.in" % args.vocab_size)
-        vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path)
+        vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path, args.dict_paths)
 
         epochSize = train_total_size / args.batch_size
         epochSize = 1 if epochSize < 1 else epochSize

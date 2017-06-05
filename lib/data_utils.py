@@ -24,6 +24,8 @@ from six.moves import urllib
 
 from tensorflow.python.platform import gfile
 import tensorflow as tf
+import pdb
+import numpy as np
 
 # Special vocabulary symbols - we always put them at the start.
 _PAD = b"_PAD"
@@ -173,7 +175,7 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size,
           vocab_file.write(w + b"\n")
 
 
-def initialize_vocabulary(vocabulary_path):
+def initialize_vocabulary(vocabulary_path, dict_path):
   """Initialize vocabulary from file.
 
   We assume the vocabulary is stored one-item-per-line, so a file:
@@ -198,6 +200,7 @@ def initialize_vocabulary(vocabulary_path):
       rev_vocab.extend(f.readlines())
     rev_vocab = [tf.compat.as_bytes(line.strip()) for line in rev_vocab]
     vocab = dict([(x, y) for (y, x) in enumerate(rev_vocab)])
+    np.save(dict_path, vocab)
     return vocab, rev_vocab
   else:
     raise ValueError("Vocabulary file %s not found.", vocabulary_path)
@@ -233,7 +236,7 @@ def sentence_to_token_ids(sentence, vocabulary,
 
 
 def data_to_token_ids(data_path, target_path, vocabulary_path,
-                      tokenizer=None, normalize_digits=True):
+                      dict_path, tokenizer=None, normalize_digits=True):
   """Tokenize data file and turn into token-ids using given vocabulary file.
 
   This function loads data line-by-line from data_path, calls the above
@@ -250,7 +253,7 @@ def data_to_token_ids(data_path, target_path, vocabulary_path,
   """
   if not gfile.Exists(target_path):
     print("Tokenizing data in %s" % data_path)
-    vocab, _ = initialize_vocabulary(vocabulary_path)
+    vocab, _ = initialize_vocabulary(vocabulary_path, dict_path)
     with gfile.GFile(data_path, mode="rb") as data_file:
       with gfile.GFile(target_path, mode="w") as tokens_file:
         counter = 0
@@ -347,7 +350,7 @@ def prepare_data(data_dir, from_train_path, to_train_path, from_dev_path, to_dev
 
 
 
-def prepare_dialog_data(data_dir, vocabulary_size):
+def prepare_dialog_data(data_dir, vocabulary_size, dict_path):
   """Get dialog data into data_dir, create vocabularies and tokenize data.
 
   Args:
@@ -370,11 +373,11 @@ def prepare_dialog_data(data_dir, vocabulary_size):
 
   # Create token ids for the training data.
   train_ids_path = train_path + (".ids%d.in" % vocabulary_size)
-  data_to_token_ids(train_path + ".in", train_ids_path, vocab_path)
+  data_to_token_ids(train_path + ".in", train_ids_path, vocab_path, dict_path)
 
   # Create token ids for the development data.
   dev_ids_path = dev_path + (".ids%d.in" % vocabulary_size)
-  data_to_token_ids(dev_path + ".in", dev_ids_path, vocab_path)
+  data_to_token_ids(dev_path + ".in", dev_ids_path, vocab_path, dict_path)
 
   return (train_ids_path, dev_ids_path, vocab_path)
 
@@ -383,7 +386,7 @@ def read_data(tokenized_dialog_path, buckets, max_size=None, reversed=False):
   """Read data from source file and put into buckets.
 
   Args:
-    source_path: path to the files with token-ids.
+    source_path: path to the files with -ids.
     max_size: maximum number of lines to read, all other will be ignored;
       if 0 or None, data files will be read completely (no limit).
 
