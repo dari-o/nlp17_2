@@ -25,7 +25,7 @@ pathToTrainLabels   = pathToData+sep+"Training_Shuffled_Dataset_Labels.txt"
 pathToEvalLabels    = pathToData+sep+"Validation_Shuffled_Dataset_Labels.txt"
 pathToCornellData   = pathToData+sep+"cornell_nonames.txt"
 
-pathToEmbeddings     = pathToData+sep+"embeddings"+ sep + "Model_+Cornell_size"+str(embedding_size)+".word2vec"
+pathToEmbeddings     = pathToData+sep+"embeddings"+ sep + "MIN5Model_+Cornell_size"+str(embedding_size)+".word2vec"
 pathToModel         = workingDirectory+sep+sep+"model"
 pathToWord2Int      = pathToData + sep+"word2int_dictionary.npy"
 pathToIntData       = workingDirectory + sep + "integrizedMatrix.npy"

@@ -64,7 +64,7 @@ def train(args):
 
         # Load vocabularies.
         vocab_path = os.path.join(args.data_dir, "vocab%d.in" % args.vocab_size)
-        vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path, args.dict_paths)
+        vocab, rev_vocab = data_utils.initialize_vocabulary(vocab_path, args.dict_path)
 
         epochSize = train_total_size / args.batch_size
         epochSize = 1 if epochSize < 1 else epochSize

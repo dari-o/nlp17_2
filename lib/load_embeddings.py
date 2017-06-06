@@ -3,6 +3,8 @@ import numpy as np
 import tensorflow as tf
 import pdb 
 from lib.Constants import *
+
+
 def load_embedding(session, emb):
     '''
       session        Tensorflow session object
@@ -13,10 +15,24 @@ def load_embedding(session, emb):
     '''
     print("Loading external embeddings from %s" % pathToEmbeddings)
     vocab = np.load(pathToWord2Int).item()
-    vocabSize = len(vocab)
+    vocabSize = len(vocab)#2000 FIXME: hardcoded for now
+    #vocab_path = os.path.join(pathToData, "vocab%d.in" % vocabSize ) 
     model = models.KeyedVectors.load_word2vec_format(pathToEmbeddings, binary=False)
     external_embedding = np.zeros(shape=(vocabSize, embedding_size))
     matches = 0
+    '''
+    with open(vocab_path) as content:
+        idx = -1
+
+        for tok in content:
+            idx += 1
+            tok = tok.replace('\n', '').replace('\r', '')
+            if tok in model.vocab:
+                external_embedding[idx] = model[tok]
+                matches += 1
+            else:
+                external_embedding[idx] = np.random.uniform(low=-0.25, high=0.25, size=embedding_size)
+    '''
     for tok, idx in vocab.items():
         tok = tok.decode('utf-8')
         if tok in model.vocab:
