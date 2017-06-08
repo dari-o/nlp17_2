@@ -866,7 +866,7 @@ def embedding_attention_seq2seq(session, encoder_inputs,
       state: The state of each decoder cell at the final time-step.
         It is a 2D Tensor of shape [batch_size x cell.state_size].
   """
-  pdb.set_trace()
+  #pdb.set_trace()
   with variable_scope.variable_scope(
       scope or "embedding_attention_seq2seq", dtype=dtype) as scope:
     dtype = scope.dtype

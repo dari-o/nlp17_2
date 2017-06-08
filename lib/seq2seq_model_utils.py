@@ -78,10 +78,10 @@ def cal_bleu(cands, ref, stopwords=['的', '嗎']):
 
 def get_predicted_sentence(args, input_sentence, vocab, rev_vocab, model, sess, debug=False, return_raw=False):
     def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
-      _, _, logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, forward_only=True)
+      _, avgPerplexity, logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, forward_only=True)
       prob = softmax(logits[dptr][0])
       # print("model_step @ %s" % (datetime.now()))
-      return prob
+      return prob, avgPerplexity
 
     def greedy_dec(output_logits, rev_vocab):
       selected_token_ids = [int(np.argmax(logit, axis=1)) for logit in output_logits]
@@ -104,11 +104,11 @@ def get_predicted_sentence(args, input_sentence, vocab, rev_vocab, model, sess, 
 
     ### Original greedy decoding
     if args.beam_size == 1:
-      _, _, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only=True)
-      return [{"dec_inp": greedy_dec(output_logits, rev_vocab), 'prob': 1}]
+      _, avgPerp, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only=True)
+      return [{"dec_inp": greedy_dec(output_logits, rev_vocab), 'prob': 1, 'perp': avgPerp}]
 
     # Get output logits for the sentence.
-    beams, new_beams, results = [(1, 0, {'eos': 0, 'dec_inp': decoder_inputs, 'prob': 1, 'prob_ts': 1, 'prob_t': 1})], [], [] # initialize beams as (log_prob, empty_string, eos)
+    beams, new_beams, results = [(1, 0, {'eos': 0, 'dec_inp': decoder_inputs, 'prob': 1, 'prob_ts': 1, 'prob_t': 1, 'perp': 0})], [], [] # initialize beams as (log_prob, empty_string, eos)
     dummy_encoder_inputs = [np.array([data_utils.PAD_ID]) for _ in range(len(encoder_inputs))]
     
     for dptr in range(len(decoder_inputs)-1):
@@ -125,10 +125,10 @@ def get_predicted_sentence(args, input_sentence, vocab, rev_vocab, model, sess, 
         # normal seq2seq
         if debug: print(cand['prob'], " ".join([dict_lookup(rev_vocab, w) for w in cand['dec_inp']]))
 
-        all_prob_ts = model_step(encoder_inputs, cand['dec_inp'], dptr, target_weights, bucket_id)
+        all_prob_ts, avgPerp = model_step(encoder_inputs, cand['dec_inp'], dptr, target_weights, bucket_id)#FIXME - not sure if that's the correct perplexity
         if args.antilm:
           # anti-lm
-          all_prob_t  = model_step(dummy_encoder_inputs, cand['dec_inp'], dptr, target_weights, bucket_id)
+          all_prob_t,_  = model_step(dummy_encoder_inputs, cand['dec_inp'], dptr, target_weights, bucket_id)
           # adjusted probability
           all_prob    = all_prob_ts - args.antilm * all_prob_t #+ args.n_bonus * dptr + random() * 1e-50
         else:
@@ -150,6 +150,7 @@ def get_predicted_sentence(args, input_sentence, vocab, rev_vocab, model, sess, 
             'prob_ts' : cand['prob_ts'] * all_prob_ts[c],
             'prob_t'  : cand['prob_t'] * all_prob_t[c],
             'prob'    : cand['prob'] * all_prob[c],
+            'avgPerp' : avgPerp,
           }
           new_cand = (new_cand['prob'], random(), new_cand) # stuff a random to prevent comparing new_cand
           

@@ -4,29 +4,32 @@ import os
 def params_setup(cmdline=None):
   sep = os.sep
   parser = argparse.ArgumentParser()
-  parser.add_argument('--mode', type=str, required=True, help='work mode: train/test/chat')
+  parser.add_argument('--mode', type=str, default='test', required=False, help='work mode: train/test/chat')
   
   # path ctrl
-  parser.add_argument('--model_name', type=str, default='movie_subtitles_en', help='model name, affects data, model, result save path')
+  parser.add_argument('--model_name', type=str, default='netflix', help='model name, affects data, model, result save path')
   parser.add_argument('--scope_name', type=str, help='separate namespace, for multi-models working together')
   parser.add_argument('--work_root', type=str, default='works', help='root dir for data, model, result save path')
   parser.add_argument('--dict_path', type=str, default='works'+sep+'netflix'+sep+'data'+sep+'word2int_dictionary.npy', help='root dir for data, model, result save path')
+  parser.add_argument('--eval_path', type=str, default='works'+sep+'data'+sep+'Validation_Shuffled_Dataset.txt', help='file for the validation data')
 
   # training params
   parser.add_argument('--learning_rate', type=float, default=0.5, help='Learning rate.')
   parser.add_argument('--pretrain_embeddings', type=bool, default=True, help='Pretrain the input embeddings')
   parser.add_argument('--use_attention', type=bool, default=True, help='Use attention mechanism for training')
-
-  parser.add_argument('--learning_rate_decay_factor', type=float, default=0.99, help='Learning rate decays by this much.')
+  
+  parser.add_argument('--learning_rate_decay_factor', type=float, default=0.95, help='Learning rate decays by this much.')
   parser.add_argument('--max_gradient_norm', type=float, default=5.0, help='Clip gradients to this norm.')
-  parser.add_argument('--batch_size', type=int, default=64, help='Batch size to use during training.')
+  parser.add_argument('--batch_size', type=int, default=128, help='Batch size to use during training.')
 
   parser.add_argument('--vocab_size', type=int, default=20000, help='Dialog vocabulary size.')
-  parser.add_argument('--size', type=int, default=512, help='Size of each model layer.')
+  parser.add_argument('--size', type=int, default=300, help='Size of each model layer.')
   parser.add_argument('--num_layers', type=int, default=4, help='Number of layers in the model.')
 
   parser.add_argument('--max_train_data_size', type=int, default=0, help='Limit on the size of training data (0: no limit)')
   parser.add_argument('--steps_per_checkpoint', type=int, default=500, help='How many training steps to do per checkpoint')
+
+  parser.add_argument('--epochs', type=int, default=15, help='Number of epochs for training.')
 
   # predicting params
   parser.add_argument('--beam_size', type=int, default=1, help='beam search size')
