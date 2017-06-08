@@ -4,13 +4,14 @@ import os
 def params_setup(cmdline=None):
   sep = os.sep
   parser = argparse.ArgumentParser()
-  parser.add_argument('--mode', type=str, required=True, help='work mode: train/test/chat')
+  parser.add_argument('--mode', type=str, default='test', required=False, help='work mode: train/test/chat')
   
   # path ctrl
-  parser.add_argument('--model_name', type=str, default='movie_subtitles_en', help='model name, affects data, model, result save path')
+  parser.add_argument('--model_name', type=str, default='netflix', help='model name, affects data, model, result save path')
   parser.add_argument('--scope_name', type=str, help='separate namespace, for multi-models working together')
   parser.add_argument('--work_root', type=str, default='works', help='root dir for data, model, result save path')
   parser.add_argument('--dict_path', type=str, default='works'+sep+'netflix'+sep+'data'+sep+'word2int_dictionary.npy', help='root dir for data, model, result save path')
+  parser.add_argument('--eval_path', type=str, default='works'+sep+'data'+sep+'Validation_Shuffled_Dataset.txt', help='file for the validation data')
 
   # training params
   parser.add_argument('--learning_rate', type=float, default=0.5, help='Learning rate.')

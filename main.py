@@ -17,8 +17,16 @@ def main(_):
     if args.mode == 'train':
       train(args)
     elif args.mode == 'test':
+      args.buckets.append((100,300))
+      args.buckets.append((300,450))
+      args.buckets.append((450,550))
       predict(args)
     elif args.mode == 'chat':
+      chat(args)
+    elif args.mode == 'eval':
+      args.buckets.append((100,300))
+      args.buckets.append((300,450))
+      args.buckets.append((450,550))
       chat(args)
     # elif args.mode == 'mert':
     #   mert(args)

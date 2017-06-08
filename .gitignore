@@ -60,3 +60,4 @@ figure_1.png
 *.index
 works/
 *.meta
+*.word2vec
