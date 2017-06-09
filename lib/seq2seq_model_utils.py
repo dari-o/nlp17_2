@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 import numpy as np
 import tensorflow as tf
 from random import random
@@ -105,10 +106,10 @@ def get_predicted_sentence(args, input_sentence, vocab, rev_vocab, model, sess, 
     ### Original greedy decoding
     if args.beam_size == 1:
       _, avgPerp, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id, forward_only=True)
-      return [{"dec_inp": greedy_dec(output_logits, rev_vocab), 'prob': 1, 'perp': avgPerp}]
+      return [{"dec_inp": greedy_dec(output_logits, rev_vocab), 'prob': 1}]
 
     # Get output logits for the sentence.
-    beams, new_beams, results = [(1, 0, {'eos': 0, 'dec_inp': decoder_inputs, 'prob': 1, 'prob_ts': 1, 'prob_t': 1, 'perp': 0})], [], [] # initialize beams as (log_prob, empty_string, eos)
+    beams, new_beams, results = [(1, 0, {'eos': 0, 'dec_inp': decoder_inputs, 'prob': 1, 'prob_ts': 1, 'prob_t': 1})], [], [] # initialize beams as (log_prob, empty_string, eos)
     dummy_encoder_inputs = [np.array([data_utils.PAD_ID]) for _ in range(len(encoder_inputs))]
     
     for dptr in range(len(decoder_inputs)-1):
@@ -125,10 +126,11 @@ def get_predicted_sentence(args, input_sentence, vocab, rev_vocab, model, sess, 
         # normal seq2seq
         if debug: print(cand['prob'], " ".join([dict_lookup(rev_vocab, w) for w in cand['dec_inp']]))
 
-        all_prob_ts, avgPerp = model_step(encoder_inputs, cand['dec_inp'], dptr, target_weights, bucket_id)#FIXME - not sure if that's the correct perplexity
+        all_prob_ts, _ = model_step(encoder_inputs, decoder_inputs, dptr, target_weights, bucket_id)#FIXME - not sure if that's the correct perplexity
         if args.antilm:
           # anti-lm
-          all_prob_t,_  = model_step(dummy_encoder_inputs, cand['dec_inp'], dptr, target_weights, bucket_id)
+          '''cand['dec_inp']'''
+          all_prob_t,_  = model_step(dummy_encoder_inputs, decoder_inputs, dptr, target_weights, bucket_id)
           # adjusted probability
           all_prob    = all_prob_ts - args.antilm * all_prob_t #+ args.n_bonus * dptr + random() * 1e-50
         else:
@@ -150,7 +152,7 @@ def get_predicted_sentence(args, input_sentence, vocab, rev_vocab, model, sess, 
             'prob_ts' : cand['prob_ts'] * all_prob_ts[c],
             'prob_t'  : cand['prob_t'] * all_prob_t[c],
             'prob'    : cand['prob'] * all_prob[c],
-            'avgPerp' : avgPerp,
+            'perp'    : cand['perp'] + np.log(all_prob[c]),
           }
           new_cand = (new_cand['prob'], random(), new_cand) # stuff a random to prevent comparing new_cand
           
@@ -169,6 +171,142 @@ def get_predicted_sentence(args, input_sentence, vocab, rev_vocab, model, sess, 
     # post-process results
     res_cands = []
     for prob, _, cand in sorted(results, reverse=True):
+      cand['perp'] = np.exp(-cand['perp']/len(cand['dec_inp']))
       cand['dec_inp'] = " ".join([dict_lookup(rev_vocab, w) for w in cand['dec_inp']])
       res_cands.append(cand)
+    return res_cands[:args.beam_size]
+
+
+
+
+
+
+
+
+
+
+def get_predicted_sentence_given_target(args, input_sentence, target_sentence, vocab, rev_vocab, model, sess, debug=False, return_raw=False):
+    def model_step(enc_inp, dec_inp, dptr, target_weights, bucket_id):
+        _, avgPerplexity, logits = model.step(sess, enc_inp, dec_inp, target_weights, bucket_id, forward_only=True)
+        prob = softmax(logits[dptr][0])
+        # print("model_step @ %s" % (datetime.now()))
+        return prob, math.exp(avgPerplexity)
+
+    def greedy_dec(output_logits, rev_vocab):
+        selected_token_ids = [int(np.argmax(logit, axis=1)) for logit in output_logits]
+        if data_utils.EOS_ID in selected_token_ids:
+            eos = selected_token_ids.index(data_utils.EOS_ID)
+            selected_token_ids = selected_token_ids[:eos]
+        output_sentence = ' '.join([dict_lookup(rev_vocab, t) for t in selected_token_ids])
+        return output_sentence
+
+    input_token_ids = data_utils.sentence_to_token_ids(input_sentence, vocab)
+    target_token_ids = data_utils.sentence_to_token_ids(target_sentence, vocab)
+
+    # Which bucket does it belong to?
+    bucket_id = min([b for b in range(len(args.buckets)) if (args.buckets[b][0] > len(input_token_ids) and args.buckets[b][1] > len(target_token_ids ))])
+    feed_data = {bucket_id: [(input_token_ids, target_token_ids)]}
+
+    # Get a 1-element batch to feed the sentence to the model.
+    encoder_inputs, decoder_inputs, target_weights = model.get_batch(feed_data, bucket_id)
+
+    ### Original greedy decoding
+    if args.beam_size == 1:
+        _, avgPerp, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id,
+                                               forward_only=True)
+        return [{"dec_inp": greedy_dec(output_logits, rev_vocab), 'prob': 1, 'perp': math.exp(avgPerp)}]
+
+    # Get output logits for the sentence.
+    beams, new_beams, results = [(1, 0, {'eos': 0, 'dec_inp': decoder_inputs, 'prob': 1, 'prob_ts': 1, 'prob_t': 1,
+                                         'perp': -1})], [], []  # initialize beams as (log_prob, empty_string, eos)
+    dummy_encoder_inputs = [np.array([data_utils.PAD_ID]) for _ in range(len(encoder_inputs))]
+
+    for dptr in range(len(decoder_inputs) - 1):
+        if dptr > 0:
+            target_weights[dptr] = [1.]
+            beams, new_beams = new_beams[:args.beam_size], []
+        if debug: print("=====[beams]=====", beams)
+        heapq.heapify(beams)  # since we will remove something
+        for prob, _, cand in beams:
+            if cand['eos']:
+                results += [(prob, 0, cand)]
+                continue
+
+            # normal seq2seq
+            if debug: print(cand['prob'], " ".join([dict_lookup(rev_vocab, w) for w in cand['dec_inp']]))
+
+            all_prob_ts, avgPerp = model_step(encoder_inputs, cand['dec_inp'], dptr, target_weights,
+                                              bucket_id)
+            if args.antilm:
+                # anti-lm
+                all_prob_t, _ = model_step(dummy_encoder_inputs, cand['dec_inp'], dptr, target_weights, bucket_id)
+                # adjusted probability
+                all_prob = all_prob_ts - args.antilm * all_prob_t  # + args.n_bonus * dptr + random() * 1e-50
+            else:
+                all_prob_t = [0] * len(all_prob_ts)
+                all_prob = all_prob_ts
+
+            # suppress copy-cat (respond the same as input)
+            if dptr < len(input_token_ids):
+                all_prob[input_token_ids[dptr]] = all_prob[input_token_ids[dptr]] * 0.01
+
+            # for debug use
+            if return_raw: return all_prob, all_prob_ts, all_prob_t
+
+            # beam search
+            for c in np.argsort(all_prob)[::-1][:args.beam_size]:
+                new_cand = {
+                    'eos': (c == data_utils.EOS_ID),
+                    'dec_inp': [(np.array([c]) if i == (dptr + 1) else k) for i, k in enumerate(cand['dec_inp'])],
+                    'prob_ts': cand['prob_ts'] * all_prob_ts[c],
+                    'prob_t': cand['prob_t'] * all_prob_t[c],
+                    'prob': cand['prob'] * all_prob[c],
+                    'perp': avgPerp,
+                }
+                new_cand = (new_cand['prob'], random(), new_cand)  # stuff a random to prevent comparing new_cand
+
+                try:
+                    if (len(new_beams) < args.beam_size):
+                        heapq.heappush(new_beams, new_cand)
+                    elif (new_cand[0] > new_beams[0][0]):
+                        heapq.heapreplace(new_beams, new_cand)
+                except Exception as e:
+                    print("[Error]", e)
+                    print("-----[new_beams]-----\n", new_beams)
+                    print("-----[new_cand]-----\n", new_cand)
+
+    results += new_beams  # flush last cands
+
+    '''
+    maxProb = -1
+    bestCand = None
+    for prob, _, cand in results:
+        if(cand['prob'] > maxProb):
+            maxProb = cand['prob']
+            bestCand = cand
+
+    _, avgPerp, output_logits = model.step(sess, encoder_inputs, decoder_inputs, target_weights, bucket_id,
+                                           forward_only=True)
+    print(output_logits)
+    '''
+
+    # Compute bitwise perplexity
+    perp = 0
+    sentLen = 0
+    smLen = len(sm)
+    for l in range(smLen):
+        # print(int2word[np.argmax(sm[l], axis=0)])
+
+        if (batch[0, l + 1] == word2int[pad]):
+            break
+        sentLen += 1
+        perp += np.log2(sm[l, batch[0, l + 1]])
+    perp /= sentLen
+    perp = np.power(2, -perp)
+
+    # post-process results
+    res_cands = []
+    for prob, _, cand in sorted(results, reverse=True):
+        cand['dec_inp'] = " ".join([dict_lookup(rev_vocab, w) for w in cand['dec_inp']])
+        res_cands.append(cand)
     return res_cands[:args.beam_size]

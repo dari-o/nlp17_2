@@ -13,7 +13,7 @@ from lib.chat import chat
 
 def main(_):
     args = params_setup()
-    print("[args]: ", args)
+    #print("[args]: ", args)
     if args.mode == 'train':
       train(args)
     elif args.mode == 'test':

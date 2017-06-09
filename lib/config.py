@@ -11,12 +11,12 @@ def params_setup(cmdline=None):
   parser.add_argument('--scope_name', type=str, help='separate namespace, for multi-models working together')
   parser.add_argument('--work_root', type=str, default='works', help='root dir for data, model, result save path')
   parser.add_argument('--dict_path', type=str, default='works'+sep+'netflix'+sep+'data'+sep+'word2int_dictionary.npy', help='root dir for data, model, result save path')
-  parser.add_argument('--eval_path', type=str, default='works'+sep+'data'+sep+'Validation_Shuffled_Dataset.txt', help='file for the validation data')
+  parser.add_argument('--eval_path', type=str, default='data'+sep+'Validation_Shuffled_Dataset_small.txt', help='file for the validation data')
 
   # training params
   parser.add_argument('--learning_rate', type=float, default=0.5, help='Learning rate.')
-  parser.add_argument('--pretrain_embeddings', type=bool, default=True, help='Pretrain the input embeddings')
-  parser.add_argument('--use_attention', type=bool, default=True, help='Use attention mechanism for training')
+  parser.add_argument('--pretrain_embeddings', type=bool, default=False, help='Pretrain the input embeddings')
+  parser.add_argument('--use_attention', type=bool, default=False, help='Use attention mechanism for training')
   
   parser.add_argument('--learning_rate_decay_factor', type=float, default=0.95, help='Learning rate decays by this much.')
   parser.add_argument('--max_gradient_norm', type=float, default=5.0, help='Clip gradients to this norm.')
