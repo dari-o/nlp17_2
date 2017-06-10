@@ -8,13 +8,13 @@ import pdb
 
 
 #Compute greedy similaryty
-model_output_path = 'results_4_300_20000sent.txt'
-ground_truth_path = 'validation_ground_truth.txt'
+model_output_path = "data" + sep +'Vanilla-BaselineSHORT.txt'
+ground_truth_path = "data" + sep +'Validation_Shuffled_Output.txt'
 word2int_path = "works" + sep +"netflix" +sep+ "data"+ sep+"word2int_dictionary.npy"
 word2int = np.load(pathToWord2Int).item()
 model_output = open(model_output_path).readlines()
 ground_truth = open(ground_truth_path).readlines()
-num_responses = 1000 #len(model_output)
+num_responses = 14000 #len(model_output)
 vocabSize = 20000
 
 embeddingSize=512

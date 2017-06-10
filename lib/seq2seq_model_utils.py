@@ -41,11 +41,11 @@ def create_model(session, args, forward_only=True):
   ckpt = tf.train.get_checkpoint_state(args.model_dir)
   # if ckpt and gfile.Exists(ckpt.model_checkpoint_path):
   if ckpt and ckpt.model_checkpoint_path:
-    print("Reading model parameters from %s @ %s" % (ckpt.model_checkpoint_path, datetime.now()))
+    #print("Reading model parameters from %s @ %s" % (ckpt.model_checkpoint_path, datetime.now()))
     model.saver.restore(session, ckpt.model_checkpoint_path)
-    print("Model reloaded @ %s" % (datetime.now()))
+    #print("Model reloaded @ %s" % (datetime.now()))
   else:
-    print("Created model with fresh parameters.")
+    #print("Created model with fresh parameters.")
     session.run(tf.global_variables_initializer())
   return model
 
@@ -241,12 +241,12 @@ def get_predicted_sentence_given_target(args, input_sentence, target_sentence, v
             # normal seq2seq
             if debug: print(cand['prob'], " ".join([dict_lookup(rev_vocab, w) for w in cand['dec_inp']]))
 
-            all_prob_ts, _ = model_step(encoder_inputs, decoder_inputs, dptr, target_weights,
+            all_prob_ts, _ = model_step(encoder_inputs, cand['dec_inp'], dptr, target_weights,
                                         bucket_id)
             if args.antilm:
                 # anti-lm
                 '''cand['dec_inp']'''
-                all_prob_t, _ = model_step(dummy_encoder_inputs, decoder_inputs, dptr, target_weights, bucket_id)
+                all_prob_t, _ = model_step(dummy_encoder_inputs, cand['dec_inp'], dptr, target_weights, bucket_id)
                 # adjusted probability
                 all_prob = all_prob_ts - args.antilm * all_prob_t  # + args.n_bonus * dptr + random() * 1e-50
             else:
@@ -260,6 +260,13 @@ def get_predicted_sentence_given_target(args, input_sentence, target_sentence, v
             # for debug use
             if return_raw: return all_prob, all_prob_ts, all_prob_t
 
+            '''
+            perplexityHelper = 0
+            for ph in all_prob_ts:
+                if(ph>0):
+                    perplexityHelper += np.log(ph)
+            '''
+
             # beam search
             for c in np.argsort(all_prob)[::-1][:args.beam_size]:
                 new_cand = {
@@ -268,7 +275,7 @@ def get_predicted_sentence_given_target(args, input_sentence, target_sentence, v
                     'prob_ts': cand['prob_ts'] * all_prob_ts[c],
                     'prob_t': cand['prob_t'] * all_prob_t[c],
                     'prob': cand['prob'] * all_prob[c],
-                    'perp': cand['perp'] + np.log(all_prob[c]),
+                    'perp': (cand['perp'] + np.log(all_prob_ts[decoder_inputs[dptr+1]])) if (c != data_utils.PAD_ID and c != data_utils.GO_ID) else cand['perp'],
                 }
                 new_cand = (new_cand['prob'], random(), new_cand)  # stuff a random to prevent comparing new_cand
 
@@ -287,8 +294,8 @@ def get_predicted_sentence_given_target(args, input_sentence, target_sentence, v
     # post-process results
     res_cands = []
     for prob, _, cand in sorted(results, reverse=True):
-        cand['dec_inp'] = " ".join([dict_lookup(rev_vocab, int(w[0])) for w in cand['dec_inp'] if (w[0] != data_utils.BOS_ID and w[0] != data_utils.EOS_ID and w[0] != data_utils.GO_ID) ])
-        cand['perp'] = np.exp(-cand['perp'] / (len(cand['dec_inp'])+1))#+1 for EOS
+        cand['dec_inp'] = " ".join([dict_lookup(rev_vocab, int(w[0])) for w in cand['dec_inp'] if (w[0] != data_utils.PAD_ID and w[0] != data_utils.EOS_ID and w[0] != data_utils.GO_ID) ])
+        cand['perp'] = np.exp(-cand['perp'] / (1 + len(cand['dec_inp'].split())))#(len(decoder_inputs)-1))#(1+len(cand['dec_inp'].split())))
         #pdb.set_trace()
         res_cands.append(cand)
     return res_cands[:args.beam_size]

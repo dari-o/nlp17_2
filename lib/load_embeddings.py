@@ -13,7 +13,7 @@ def load_embedding(session, emb):
       path           Path to embedding file
       dim_embedding  Dimensionality of the external embedding.
     '''
-    print("Loading external embeddings from %s" % pathToEmbeddings)
+    #print("Loading external embeddings from %s" % pathToEmbeddings)
     vocab = np.load(pathToWord2Int).item()
     vocabSize = len(vocab)#2000 FIXME: hardcoded for now
     #vocab_path = os.path.join(pathToData, "vocab%d.in" % vocabSize ) 
@@ -41,7 +41,7 @@ def load_embedding(session, emb):
         else:
             external_embedding[idx] = np.random.uniform(low=-0.25, high=0.25, size=embedding_size)
         
-    print("%d words out of %d could be loaded" % (matches, vocabSize))
+    #print("%d words out of %d could be loaded" % (matches, vocabSize))
     
     pretrained_embeddings = tf.placeholder(tf.float32, [None, None]) 
     assign_op = emb.assign(pretrained_embeddings)

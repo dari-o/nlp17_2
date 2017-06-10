@@ -15,8 +15,8 @@ def params_setup(cmdline=None):
 
   # training params
   parser.add_argument('--learning_rate', type=float, default=0.5, help='Learning rate.')
-  parser.add_argument('--pretrain_embeddings', type=bool, default=False, help='Pretrain the input embeddings')
-  parser.add_argument('--use_attention', type=bool, default=False, help='Use attention mechanism for training')
+  parser.add_argument('--pretrain_embeddings', type=bool, default=True, help='Pretrain the input embeddings')
+  parser.add_argument('--use_attention', type=bool, default=True, help='Use attention mechanism for training')
   
   parser.add_argument('--learning_rate_decay_factor', type=float, default=0.95, help='Learning rate decays by this much.')
   parser.add_argument('--max_gradient_norm', type=float, default=5.0, help='Clip gradients to this norm.')
@@ -33,7 +33,7 @@ def params_setup(cmdline=None):
 
   # predicting params
   parser.add_argument('--beam_size', type=int, default=1, help='beam search size')
-  parser.add_argument('--antilm', type=float, default=0, help='anti-language model weight')
+  parser.add_argument('--antilm', type=float, default=False, help='anti-language model weight')
   parser.add_argument('--n_bonus', type=int, default=0, help='bonus with sentence length')
 
   # environment params
